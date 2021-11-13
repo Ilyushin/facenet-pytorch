@@ -41,13 +41,13 @@ Also included in this repo is an efficient pytorch implementation of MTCNN for f
     
     ```bash
     # With pip:
-    pip install facenet-pytorch
+    pip install facenet_pytorch
     
     # or clone this repo, removing the '-' to allow python imports:
     git clone https://github.com/timesler/facenet-pytorch.git facenet_pytorch
     
     # or use a docker container (see https://github.com/timesler/docker-jupyter-dl-gpu):
-    docker run -it --rm timesler/jupyter-dl-gpu pip install facenet-pytorch && ipython
+    docker run -it --rm timesler/jupyter-dl-gpu pip install facenet_pytorch && ipython
     ```
     
 1. In python, import facenet-pytorch and instantiate models:
@@ -178,9 +178,9 @@ The package and any of the example notebooks can be run with docker (or nvidia-d
 
 ```bash
 docker run --rm -p 8888:8888
-    -v ./facenet-pytorch:/home/jovyan timesler/jupyter-dl-gpu \
+    -v ./facenet_pytorch:/home/jovyan timesler/jupyter-dl-gpu \
     -v <path to data>:/home/jovyan/data
-    pip install facenet-pytorch && jupyter lab 
+    pip install facenet_pytorch && jupyter lab 
 ```
 
 Navigate to the examples/ directory and run any of the ipython notebooks.

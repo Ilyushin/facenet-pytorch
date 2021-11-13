@@ -1,6 +1,6 @@
 import setuptools, os
 
-PACKAGE_NAME = 'facenet-pytorch'
+PACKAGE_NAME = 'facenet_pytorch'
 VERSION = '2.5.2'
 AUTHOR = 'Tim Esler'
 EMAIL = 'tim.esler@gmail.com'
@@ -40,5 +40,11 @@ setuptools.setup(
         'requests',
         'torchvision',
         'pillow',
+        'accelerate',
+        'packaging',
+        'sklearn',
+        'pysistant',
+        'tqdm',
+        'tensorboard'
     ],
 )

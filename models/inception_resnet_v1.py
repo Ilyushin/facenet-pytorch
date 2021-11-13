@@ -297,6 +297,7 @@ class InceptionResnetV1(nn.Module):
         x = self.last_bn(x)
         if self.classify:
             x = self.logits(x)
+            # x = torch.nn.functional.softmax(x)
         else:
             x = F.normalize(x, p=2, dim=1)
         return x
