@@ -16,9 +16,11 @@ from pysistant import helpers
 train_data_dir = '/mnt/vmk/datasets/faces/vgg_face_2/data/train_cropped'
 test_data_dir = '/mnt/vmk/datasets/faces/vgg_face_2/data/test_cropped'
 
-saved_model_dir = '/mnt/vmk/projects/ilyushin/ai-s/facenet_pytorch/results/models'
+saved_model_dir = '/mnt/vmk/projects/ilyushin/ai-s/facenet_pytorch/results_plain/models'
+saved_checkpoints_dir = '/mnt/vmk/projects/ilyushin/ai-s/facenet_pytorch/results_plain/checkpoints'
 
 helpers.create_dir(saved_model_dir)
+helpers.create_dir(saved_checkpoints_dir)
 
 
 batch_size = 512
@@ -101,6 +103,16 @@ for epoch in range(epochs):
         batch_metrics=metrics, show_running=True, device=device,
         writer=writer
     )
+
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': resnet.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        # 'loss': loss,
+    }, os.path.join(saved_checkpoints_dir, f'epoch_{epoch}.tar'))
+
+    # Save
+    torch.save(resnet, os.path.join(saved_model_dir, 'resnet.pt'))
 
 writer.close()
 

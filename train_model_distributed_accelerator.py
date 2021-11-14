@@ -18,8 +18,8 @@ from sklearn.model_selection import train_test_split
 train_data_dir = '/mnt/vmk/datasets/faces/vgg_face_2/data/train_cropped'
 test_data_dir = '/mnt/vmk/datasets/faces/vgg_face_2/data/test_cropped'
 
-saved_model_dir = '/mnt/vmk/projects/ilyushin/ai-s/facenet_pytorch/results/models'
-saved_checkpoints_dir = '/mnt/vmk/projects/ilyushin/ai-s/facenet_pytorch/results/checkpoints'
+saved_model_dir = '/mnt/vmk/projects/ilyushin/ai-s/facenet_pytorch/results_distr_acc/models'
+saved_checkpoints_dir = '/mnt/vmk/projects/ilyushin/ai-s/facenet_pytorch/results_distr_acc/checkpoints'
 
 helpers.create_dir(saved_model_dir)
 helpers.create_dir(saved_checkpoints_dir)
@@ -98,11 +98,9 @@ def get_datasets():
         train_y.append(file_path.split('/')[-2])
 
     x_train = np.array(train_x)
-    x_val = np.array(train_y)
+    train_y = np.array(train_y)
 
-    x_train, x_val, y_train, y_val = train_test_split(x_train, x_val, test_size=0.2, stratify=x_val)
-
-    # print('x_train, x_val - ', len(x_train), len(x_val))
+    x_train, x_val, y_train, y_val = train_test_split(x_train, train_y, test_size=0.2, stratify=train_y)
 
     trans = transforms.Compose([
         # np.float32,
@@ -140,7 +138,7 @@ train_dataset, train_loader, val_loader = get_datasets()
 resnet = InceptionResnetV1(
     classify=True,
     num_classes=len(train_dataset.class_to_idx)
-).to(accelerator.device)
+)
 
 optimizer = optim.Adam(resnet.parameters(), lr=0.001)
 scheduler = MultiStepLR(optimizer, [5, 10])
@@ -158,39 +156,34 @@ for epoch in range(epochs):
     num_elems = 0
     resnet.train()
     for step, (x, y) in enumerate(train_loader):
-        x = x.to(accelerator.device)
-        y = y.to(accelerator.device)
+        # x = x.to(accelerator.device)
+        # y = y.to(accelerator.device)
         y_pred = resnet(x)
         loss_batch = loss_fn(y_pred, y)
         accelerator.backward(loss_batch)
         optimizer.step()
+        scheduler.step()
         optimizer.zero_grad()
 
-        loss_batch = loss_batch.detach().cpu()
+        # loss_batch = loss_batch.detach().cpu()
+        #
+        # predictions = y_pred.argmax(dim=-1)
+        # accurate_preds = accelerator.gather(predictions) == accelerator.gather(y)
+        # num_elems += accurate_preds.shape[0]
+        # accuracy += accurate_preds.long().sum()
 
-        predictions = y_pred.argmax(dim=-1)
-        accuracy_preds = accelerator.gather(predictions) == accelerator.gather(y)
-        num_elems += accuracy_preds.shape[0]
-        accuracy += accuracy_preds.long().sum()
-
-        if step % 100 == 0:
-            accelerator.print(
-                f"Train epoch {epoch}/{epochs}, step {step}/{steps}: loss {loss_batch.item() / num_elems:.4f}, accuracy {100 * accuracy.item() / num_elems:.2f}"
-            )
+        # if step % 100 == 0:
+        #     accelerator.print(
+        #         f"Train epoch {epoch}/{epochs}, step {step}/{steps}: loss {loss_batch.item():.4f}, accuracy {100 * accuracy.item() / num_elems:.2f}"
+        #     )
 
     resnet.eval()
     loss = 0
     accuracy = 0
     num_elems = 0
     for step, (x, y) in enumerate(val_loader):
-        x = x.to(accelerator.device)
-        y = y.to(accelerator.device)
         with torch.no_grad():
             y_pred = resnet(x)
-
-        loss_batch = loss_fn(y_pred, y)
-        loss_batch = loss_batch.detach().cpu()
-        loss += loss_batch
 
         predictions = y_pred.argmax(dim=-1)
         accuracy_preds = accelerator.gather(predictions) == accelerator.gather(y)
@@ -198,12 +191,13 @@ for epoch in range(epochs):
         accuracy += accuracy_preds.long().sum()
 
     eval_metric = accuracy.item() / num_elems
-    eval_loss = loss.item() / num_elems
+    # eval_loss = loss.item() / num_elems
     # Use accelerator.print to print only on the main process.
     accelerator.print('-' * 10)
-    accelerator.print(f"Eval epoch {epoch} from {epochs}: loss {eval_loss:.4f}, accuracy {100 * eval_metric:.2f}")
+    # accelerator.print(f"Eval epoch {epoch} from {epochs}: loss {eval_loss:.4f}, accuracy {100 * eval_metric:.2f}")
+    accelerator.print(f"Eval epoch {epoch+1} from {epochs}: accuracy {100 * eval_metric:.2f}")
 
-    torch.save({
+    accelerator.save({
         'epoch': epoch,
         'model_state_dict': resnet.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
@@ -211,4 +205,4 @@ for epoch in range(epochs):
     }, os.path.join(saved_checkpoints_dir, f'epoch_{epoch}.tar'))
 
 # Save
-torch.save(resnet, os.path.join(saved_model_dir, 'resnet.pt'))
+accelerator.save(resnet, os.path.join(saved_model_dir, 'resnet.pt'))
